@@ -57,4 +57,15 @@ class ApiClient {
   Future<Response<T>> delete<T>(String path, {Object? data}) {
     return _dio.delete<T>(path, data: data);
   }
+
+  Future<Response<List<int>>> download(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) {
+    return _dio.get<List<int>>(
+      path,
+      queryParameters: queryParameters,
+      options: Options(responseType: ResponseType.bytes),
+    );
+  }
 }

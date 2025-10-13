@@ -1,14 +1,12 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../domain/models/app_user.dart';
 import '../../../domain/models/asset.dart';
 import '../../../domain/models/asset_activity.dart';
+import '../../../domain/models/asset_category.dart';
 import '../../../domain/models/asset_status.dart';
 import '../../bloc/asset/asset_cubit.dart';
 import '../../bloc/asset/asset_state.dart';
@@ -27,24 +25,28 @@ class AddAssetScreen extends StatefulWidget {
 class _AddAssetScreenState extends State<AddAssetScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _barcodeController = TextEditingController();
   final _serialController = TextEditingController();
   final _brandController = TextEditingController();
   final _modelController = TextEditingController();
+  final _processorController = TextEditingController();
+  final _ramController = TextEditingController();
+  final _storageTypeController = TextEditingController();
+  final _storageBrandController = TextEditingController();
+  final _storageCapacityController = TextEditingController();
   final _departmentController = TextEditingController();
   final _locationController = TextEditingController();
   final _notesController = TextEditingController();
   final _priceController = TextEditingController(text: '0');
+  final _assigneeNameController = TextEditingController();
 
   late final bool _isEditing;
   String? _categoryId;
   AssetStatus _status = AssetStatus.available;
-  final ImagePicker _imagePicker = ImagePicker();
-  XFile? _selectedPhoto;
-  bool _removeExistingPhoto = false;
-  String? _existingPhotoUrl;
   DateTime? _purchaseDate;
   DateTime? _warrantyExpiry;
   String? _selectedAssigneeId;
+  bool _useCustomAssignee = false;
 
   Asset? get _editingAsset => widget.asset;
 
@@ -55,9 +57,15 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
     final asset = widget.asset;
     if (asset != null) {
       _nameController.text = asset.name;
+      _barcodeController.text = asset.barcode;
       _serialController.text = asset.serialNumber;
       _brandController.text = asset.brand ?? '';
       _modelController.text = asset.model ?? '';
+      _processorController.text = asset.processorName ?? '';
+      _ramController.text = asset.ramCapacity ?? '';
+      _storageTypeController.text = asset.storageType ?? '';
+      _storageBrandController.text = asset.storageBrand ?? '';
+      _storageCapacityController.text = asset.storageCapacity ?? '';
       _departmentController.text = asset.department;
       _locationController.text = asset.location ?? '';
       _priceController.text = asset.purchasePrice != null
@@ -68,50 +76,35 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
       _status = asset.status;
       _purchaseDate = asset.purchaseDate;
       _warrantyExpiry = asset.warrantyExpiry;
-      _existingPhotoUrl = asset.assetPhotoUrl;
       _selectedAssigneeId = asset.custodianId;
+      if (asset.custodianId == null &&
+          (asset.assignedTo != null && asset.assignedTo!.trim().isNotEmpty)) {
+        _useCustomAssignee = true;
+        _assigneeNameController.text = asset.assignedTo!;
+      }
+    } else {
+      _barcodeController.text = _generateBarcodeValue();
     }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _barcodeController.dispose();
     _serialController.dispose();
     _brandController.dispose();
     _modelController.dispose();
+    _processorController.dispose();
+    _ramController.dispose();
+    _storageTypeController.dispose();
+    _storageBrandController.dispose();
+    _storageCapacityController.dispose();
     _departmentController.dispose();
     _locationController.dispose();
     _notesController.dispose();
     _priceController.dispose();
+    _assigneeNameController.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickPhoto() async {
-    final picked = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 2048,
-      imageQuality: 85,
-    );
-    if (picked != null) {
-      setState(() {
-        _selectedPhoto = picked;
-        _removeExistingPhoto = false;
-      });
-    }
-  }
-
-  void _clearSelectedPhoto() {
-    setState(() {
-      _selectedPhoto = null;
-    });
-  }
-
-  void _removeExistingPhotoSelection() {
-    setState(() {
-      _existingPhotoUrl = null;
-      _removeExistingPhoto = true;
-      _selectedPhoto = null;
-    });
   }
 
   @override
@@ -125,9 +118,24 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
         if (_categoryId == null && categories.isNotEmpty) {
           _categoryId = categories.first.id;
         }
+        AssetCategory? selectedCategory;
+        if (_categoryId != null) {
+          for (final category in categories) {
+            if (category.id == _categoryId) {
+              selectedCategory = category;
+              break;
+            }
+          }
+        }
+        final showSpecFields = () {
+          final category = selectedCategory;
+          if (category == null) return false;
+          final lower = category.name.toLowerCase();
+          return lower.contains('laptop') || lower.contains('desktop');
+        }();
 
         AppUser? assignedUser;
-        if (_selectedAssigneeId != null) {
+        if (!_useCustomAssignee && _selectedAssigneeId != null) {
           for (final user in users) {
             if (user.id == _selectedAssigneeId) {
               assignedUser = user;
@@ -222,6 +230,77 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
+                      if (showSpecFields) ...[
+                        Text(
+                          'Spesifikasi Perangkat',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _processorController,
+                          decoration: const InputDecoration(
+                            labelText: 'Processor',
+                            hintText: 'Contoh: Intel Core i7-1255U',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _ramController,
+                          decoration: const InputDecoration(
+                            labelText: 'RAM',
+                            hintText: 'Contoh: 16 GB DDR4',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _storageTypeController,
+                          decoration: const InputDecoration(
+                            labelText: 'Tipe Storage',
+                            hintText: 'Contoh: SSD NVMe / HDD',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _storageBrandController,
+                          decoration: const InputDecoration(
+                            labelText: 'Brand Storage',
+                            hintText: 'Contoh: Samsung / Seagate',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _storageCapacityController,
+                          decoration: const InputDecoration(
+                            labelText: 'Kapasitas Storage',
+                            hintText: 'Contoh: 512 GB',
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      TextFormField(
+                        controller: _barcodeController,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: InputDecoration(
+                          labelText: 'Barcode Asset',
+                          suffixIcon: IconButton(
+                            onPressed: _regenerateBarcode,
+                            icon: const Icon(Icons.refresh_outlined),
+                            tooltip: 'Generate barcode',
+                          ),
+                        ),
+                        validator: (value) {
+                          final trimmed = value?.trim() ?? '';
+                          if (trimmed.isEmpty) {
+                            return 'Masukkan kode barcode';
+                          }
+                          if (trimmed.length < 4) {
+                            return 'Barcode terlalu pendek';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _serialController,
                         decoration: const InputDecoration(
@@ -297,27 +376,64 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      _AssigneeField(
-                        label: 'Assign To',
-                        user: assignedUser,
-                        enabled: users.isNotEmpty,
-                        onTap: users.isEmpty
-                            ? null
-                            : () async {
-                                final result = await _showAssigneePicker(
-                                  context: context,
-                                  users: users,
-                                  selected: assignedUser,
-                                );
-                                if (!mounted) return;
-                                setState(
-                                  () => _selectedAssigneeId = result?.id,
-                                );
-                              },
-                        onClear: assignedUser != null
-                            ? () => setState(() => _selectedAssigneeId = null)
-                            : null,
+                      SwitchListTile.adaptive(
+                        value: _useCustomAssignee,
+                        title: const Text('Manual Assign To'),
+                        subtitle: const Text(
+                          'Masukkan nama penerima jika tidak ada di daftar user',
+                        ),
+                        contentPadding: EdgeInsets.zero,
+                        onChanged: (value) {
+                          setState(() {
+                            _useCustomAssignee = value;
+                            if (value) {
+                              _selectedAssigneeId = null;
+                            } else {
+                              _assigneeNameController.clear();
+                            }
+                          });
+                        },
                       ),
+                      const SizedBox(height: 8),
+                      if (_useCustomAssignee)
+                        TextFormField(
+                          controller: _assigneeNameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Assign To (Name)',
+                            hintText: 'Contoh: Tim Finance',
+                          ),
+                          validator: (value) {
+                            if (_useCustomAssignee) {
+                              final trimmed = value?.trim() ?? '';
+                              if (trimmed.isEmpty) {
+                                return 'Masukkan nama penerima';
+                              }
+                            }
+                            return null;
+                          },
+                        )
+                      else
+                        _AssigneeField(
+                          label: 'Assign To',
+                          user: assignedUser,
+                          enabled: users.isNotEmpty,
+                          onTap: users.isEmpty
+                              ? null
+                              : () async {
+                                  final result = await _showAssigneePicker(
+                                    context: context,
+                                    users: users,
+                                    selected: assignedUser,
+                                  );
+                                  if (!mounted) return;
+                                  setState(
+                                    () => _selectedAssigneeId = result?.id,
+                                  );
+                                },
+                          onClear: assignedUser != null
+                              ? () => setState(() => _selectedAssigneeId = null)
+                              : null,
+                        ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _departmentController,
@@ -332,20 +448,6 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
                           labelText: 'Location',
                         ),
                       ),
-                      _PhotoPicker(
-                        selectedPhoto: _selectedPhoto,
-                        existingPhotoUrl: _existingPhotoUrl,
-                        removePending: _removeExistingPhoto,
-                        onPick: _pickPhoto,
-                        onRemoveSelected: _selectedPhoto != null
-                            ? _clearSelectedPhoto
-                            : null,
-                        onRemoveExisting:
-                            _existingPhotoUrl != null && !_removeExistingPhoto
-                            ? _removeExistingPhotoSelection
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _notesController,
                         maxLines: 4,
@@ -365,19 +467,36 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
                           final location = _locationController.text.trim();
                           final brand = _brandController.text.trim();
                           final model = _modelController.text.trim();
+                          final processor = _processorController.text.trim();
+                          final ram = _ramController.text.trim();
+                          final storageType = _storageTypeController.text
+                              .trim();
+                          final storageBrand = _storageBrandController.text
+                              .trim();
+                          final storageCapacity = _storageCapacityController
+                              .text
+                              .trim();
                           final notes = _notesController.text.trim();
+                          final barcode = _barcodeController.text
+                              .trim()
+                              .toUpperCase();
+                          if (barcode != _barcodeController.text) {
+                            _barcodeController.value = _barcodeController.value
+                                .copyWith(
+                                  text: barcode,
+                                  selection: TextSelection.collapsed(
+                                    offset: barcode.length,
+                                  ),
+                                );
+                          }
                           final price =
                               double.tryParse(
                                 _priceController.text.replaceAll(',', ''),
                               ) ??
                               0;
-                          final photoFile = _selectedPhoto != null
-                              ? File(_selectedPhoto!.path)
-                              : null;
-                          final removePhoto =
-                              _removeExistingPhoto && photoFile == null;
                           AppUser? selectedUser;
-                          if (_selectedAssigneeId != null) {
+                          if (!_useCustomAssignee &&
+                              _selectedAssigneeId != null) {
                             for (final user in users) {
                               if (user.id == _selectedAssigneeId) {
                                 selectedUser = user;
@@ -385,33 +504,59 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
                               }
                             }
                           }
+                          final customAssigneeName = _useCustomAssignee
+                              ? _assigneeNameController.text.trim()
+                              : null;
+                          final assigneeName = _useCustomAssignee
+                              ? customAssigneeName
+                              : selectedUser?.name;
+                          final effectiveAssigneeName =
+                              assigneeName ?? (_isEditing ? '' : null);
+                          final custodianId = _useCustomAssignee
+                              ? null
+                              : selectedUser?.id;
+                          final specEnabled = showSpecFields;
                           final cubit = context.read<AssetCubit>();
 
                           if (_isEditing && _editingAsset != null) {
                             final base = _editingAsset!;
                             final updated = base.copyWith(
                               name: _nameController.text.trim(),
+                              barcode: barcode,
                               serialNumber: _serialController.text.trim(),
                               categoryId: _categoryId,
                               status: _status,
                               department: department.isEmpty
                                   ? base.department
                                   : department,
-                              assignedTo: selectedUser?.name,
-                              custodianId: selectedUser?.id,
+                              assignedTo: effectiveAssigneeName,
+                              custodianId: custodianId,
                               location: location.isEmpty ? null : location,
                               brand: brand.isEmpty ? null : brand,
                               model: model.isEmpty ? null : model,
+                              processorName: specEnabled
+                                  ? (processor.isEmpty ? null : processor)
+                                  : base.processorName,
+                              ramCapacity: specEnabled
+                                  ? (ram.isEmpty ? null : ram)
+                                  : base.ramCapacity,
+                              storageType: specEnabled
+                                  ? (storageType.isEmpty ? null : storageType)
+                                  : base.storageType,
+                              storageBrand: specEnabled
+                                  ? (storageBrand.isEmpty ? null : storageBrand)
+                                  : base.storageBrand,
+                              storageCapacity: specEnabled
+                                  ? (storageCapacity.isEmpty
+                                        ? null
+                                        : storageCapacity)
+                                  : base.storageCapacity,
                               purchaseDate: _purchaseDate,
                               purchasePrice: price,
                               warrantyExpiry: _warrantyExpiry,
                               notes: notes.isEmpty ? null : notes,
                             );
-                            await cubit.updateAsset(
-                              updated,
-                              photo: photoFile,
-                              removePhoto: removePhoto,
-                            );
+                            await cubit.updateAsset(updated);
                             if (!context.mounted) return;
                             Navigator.of(context).pop();
                             return;
@@ -420,14 +565,32 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
                           final asset = Asset(
                             id: 'asset_${uuid.v4()}',
                             name: _nameController.text.trim(),
+                            barcode: barcode,
                             serialNumber: _serialController.text.trim(),
                             categoryId: _categoryId!,
                             status: _status,
                             department: department.isEmpty
                                 ? 'Unassigned'
                                 : department,
-                            assignedTo: selectedUser?.name,
-                            custodianId: selectedUser?.id,
+                            assignedTo: effectiveAssigneeName,
+                            custodianId: custodianId,
+                            processorName: specEnabled
+                                ? (processor.isEmpty ? null : processor)
+                                : null,
+                            ramCapacity: specEnabled
+                                ? (ram.isEmpty ? null : ram)
+                                : null,
+                            storageType: specEnabled
+                                ? (storageType.isEmpty ? null : storageType)
+                                : null,
+                            storageBrand: specEnabled
+                                ? (storageBrand.isEmpty ? null : storageBrand)
+                                : null,
+                            storageCapacity: specEnabled
+                                ? (storageCapacity.isEmpty
+                                      ? null
+                                      : storageCapacity)
+                                : null,
                             location: location.isEmpty ? null : location,
                             brand: brand.isEmpty ? null : brand,
                             model: model.isEmpty ? null : model,
@@ -440,7 +603,6 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
 
                           await cubit.addAsset(
                             asset,
-                            photo: photoFile,
                             activity: AssetActivity(
                               id: 'activity_${uuid.v4()}',
                               assetId: asset.id,
@@ -463,6 +625,20 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
         );
       },
     );
+  }
+
+  String _generateBarcodeValue() {
+    final raw = const Uuid().v4().replaceAll('-', '').toUpperCase();
+    final segmentLength = raw.length >= 10 ? 10 : raw.length;
+    final segment = raw.substring(0, segmentLength);
+    return 'AS-$segment';
+  }
+
+  void _regenerateBarcode() {
+    final generated = _generateBarcodeValue();
+    setState(() {
+      _barcodeController.text = generated;
+    });
   }
 
   Future<AppUser?> _showAssigneePicker({
@@ -536,141 +712,6 @@ class _DateField extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _PhotoPicker extends StatelessWidget {
-  const _PhotoPicker({
-    required this.selectedPhoto,
-    required this.existingPhotoUrl,
-    required this.removePending,
-    required this.onPick,
-    this.onRemoveSelected,
-    this.onRemoveExisting,
-  });
-
-  final XFile? selectedPhoto;
-  final String? existingPhotoUrl;
-  final bool removePending;
-  final VoidCallback onPick;
-  final VoidCallback? onRemoveSelected;
-  final VoidCallback? onRemoveExisting;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    Widget preview;
-    if (selectedPhoto != null) {
-      preview = ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.file(File(selectedPhoto!.path), fit: BoxFit.cover),
-      );
-    } else if (existingPhotoUrl != null) {
-      preview = ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.network(
-          existingPhotoUrl!,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Center(
-              child: Icon(
-                Icons.broken_image_outlined,
-                color: theme.disabledColor,
-              ),
-            );
-          },
-        ),
-      );
-    } else if (removePending) {
-      preview = Center(
-        child: Text(
-          'Foto akan dihapus saat disimpan',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: const Color(0xFFEF4444),
-            fontWeight: FontWeight.w600,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      );
-    } else {
-      preview = Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.photo_camera_back_outlined,
-            size: 42,
-            color: Color(0xFF9CA3AF),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Belum ada foto asset',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF9CA3AF),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Foto Asset',
-          style: theme.textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        AspectRatio(
-          aspectRatio: 4 / 3,
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: preview,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 12,
-          runSpacing: 8,
-          children: [
-            OutlinedButton.icon(
-              onPressed: onPick,
-              icon: const Icon(Icons.photo_library_outlined),
-              label: const Text('Pilih Foto'),
-            ),
-            if (onRemoveSelected != null)
-              TextButton.icon(
-                onPressed: onRemoveSelected,
-                icon: const Icon(Icons.close),
-                label: const Text('Hapus Pilihan'),
-              ),
-            if (onRemoveExisting != null)
-              TextButton.icon(
-                onPressed: onRemoveExisting,
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('Hapus Foto Saat Ini'),
-              ),
-          ],
-        ),
-        if (removePending && selectedPhoto == null && existingPhotoUrl == null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              'Foto akan dihapus setelah Anda menyimpan perubahan.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: const Color(0xFFEF4444),
-              ),
-            ),
-          ),
-      ],
     );
   }
 }

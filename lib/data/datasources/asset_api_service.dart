@@ -45,6 +45,14 @@ class AssetApiService {
     return const [];
   }
 
+  Future<Map<String, dynamic>?> fetchAssetByCode(String code) async {
+    final response = await _client.get<Map<String, dynamic>>(
+      '/assets/code/$code',
+    );
+    final data = _unwrapResponse(response);
+    return data['data'] as Map<String, dynamic>?;
+  }
+
   Future<Map<String, dynamic>> createAsset(dynamic payload) async {
     final response = await _client.post<Map<String, dynamic>>(
       '/assets',
@@ -65,6 +73,13 @@ class AssetApiService {
 
   Future<void> deleteAsset(String id) async {
     await _client.delete('/assets/$id');
+  }
+
+  Future<Response<List<int>>> downloadAssetReport(String format) {
+    return _client.download(
+      '/reports/assets/export',
+      queryParameters: {'format': format},
+    );
   }
 
   Map<String, dynamic> _unwrapResponse(

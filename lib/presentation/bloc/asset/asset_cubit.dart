@@ -7,6 +7,8 @@ import '../../../data/repositories/asset_repository.dart';
 import '../../../domain/models/app_user.dart';
 import '../../../domain/models/asset.dart';
 import '../../../domain/models/asset_activity.dart';
+import '../../../domain/models/asset_export_format.dart';
+import '../../../domain/models/asset_report_file.dart';
 import '../../../domain/models/asset_status.dart';
 import '../../../domain/models/maintenance_entry.dart';
 import "asset_state.dart";
@@ -144,6 +146,14 @@ class AssetCubit extends Cubit<AssetState> {
     }
   }
 
+  Future<Asset?> findAssetByCode(String code) async {
+    try {
+      return await _repository.getAssetByCode(code);
+    } catch (_) {
+      return null;
+    }
+  }
+
   void dismissMessage() {
     emit(state.copyWith(successMessage: null, errorMessage: null));
   }
@@ -160,6 +170,10 @@ class AssetCubit extends Cubit<AssetState> {
         visibleFilteredAssets: state.filteredAssets.take(capped).toList(),
       ),
     );
+  }
+
+  Future<AssetReportFile> exportAssets(AssetExportFormat format) {
+    return _repository.exportAssets(format);
   }
 
   List<AppUser> get assignableUsers => state.users;
@@ -179,6 +193,7 @@ class AssetCubit extends Cubit<AssetState> {
       if (query.isNotEmpty) {
         final fields = <String?>[
           asset.name,
+          asset.barcode,
           asset.serialNumber,
           asset.department,
           asset.assignedTo,

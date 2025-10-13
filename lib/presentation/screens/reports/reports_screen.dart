@@ -1,6 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
+import '../../../domain/models/asset_export_format.dart';
 import '../../../domain/models/asset_status.dart';
 import '../../bloc/asset/asset_cubit.dart';
 import '../../bloc/asset/asset_state.dart';
@@ -50,6 +56,31 @@ class ReportsScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        SizedBox(
+                          width: isWide ? 220 : double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () =>
+                                _exportReport(context, AssetExportFormat.excel),
+                            icon: const Icon(Icons.table_view_outlined),
+                            label: const Text('Export Excel'),
+                          ),
+                        ),
+                        SizedBox(
+                          width: isWide ? 220 : double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () =>
+                                _exportReport(context, AssetExportFormat.pdf),
+                            icon: const Icon(Icons.picture_as_pdf_outlined),
+                            label: const Text('Export PDF'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
                     if (isWide)
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,6 +206,71 @@ class ReportsScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _exportReport(
+    BuildContext context,
+    AssetExportFormat format,
+  ) async {
+    final cubit = context.read<AssetCubit>();
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context, rootNavigator: true);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final report = await cubit.exportAssets(format);
+      navigator.pop();
+
+      final directory = await _resolveDownloadDirectory();
+      final filename = report.filename.isNotEmpty
+          ? report.filename
+          : 'assets-report.${format.recommendedExtension}';
+      final path = p.join(directory.path, filename);
+      final file = File(path);
+      await file.create(recursive: true);
+      await file.writeAsBytes(report.bytes, flush: true);
+
+      messenger.showSnackBar(
+        SnackBar(content: Text('Laporan tersimpan di $path')),
+      );
+      final openResult = await OpenFilex.open(path);
+      final message = openResult.type == ResultType.done
+          ? 'Laporan tersimpan di '
+          : 'Laporan tersimpan di  (tidak dapat dibuka otomatis)';
+      messenger.showSnackBar(SnackBar(content: Text(message)));
+    } catch (error) {
+      navigator.maybePop();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Gagal mengekspor laporan: $error')),
+      );
+    }
+  }
+
+  Future<Directory> _resolveDownloadDirectory() async {
+    try {
+      final downloads = await getDownloadsDirectory();
+      if (downloads != null) {
+        await downloads.create(recursive: true);
+        return downloads;
+      }
+    } catch (_) {}
+
+    if (Platform.isAndroid) {
+      final external = await getExternalStorageDirectory();
+      if (external != null) {
+        final dir = Directory(p.join(external.path, 'Download'));
+        await dir.create(recursive: true);
+        return dir;
+      }
+    }
+
+    final documents = await getApplicationDocumentsDirectory();
+    await documents.create(recursive: true);
+    return documents;
+  }
+
   Map<AssetStatus, int> _buildStatusCounts(AssetState state) {
     final counts = <AssetStatus, int>{
       for (final status in AssetStatus.values) status: 0,
@@ -213,22 +309,30 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final background = accentColor ?? colors.surface;
+    final borderColor = colors.onSurface.withValues(alpha: 0.06);
+    final capsuleColor = accentColor != null
+        ? accentColor!.withValues(alpha: 0.45)
+        : colors.primary.withValues(alpha: 0.12);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: accentColor ?? Colors.white,
+        color: background,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: capsuleColor,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(icon, size: 24, color: const Color(0xFF1F2937)),
+            child: Icon(icon, size: 24, color: colors.primary),
           ),
           const SizedBox(width: 16),
           Column(
@@ -236,16 +340,16 @@ class _SummaryCard extends StatelessWidget {
             children: [
               Text(
                 value,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Text(
                 title,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B7280)),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colors.onSurface.withValues(alpha: 0.65),
+                ),
               ),
             ],
           ),
@@ -268,12 +372,15 @@ class _StatusDistributionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: colors.onSurface.withValues(alpha: 0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -283,15 +390,15 @@ class _StatusDistributionTile extends StatelessWidget {
             children: [
               Text(
                 status.label,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               Text(
                 '$count aset',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B7280)),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colors.onSurface.withValues(alpha: 0.6),
+                ),
               ),
             ],
           ),
@@ -301,7 +408,7 @@ class _StatusDistributionTile extends StatelessWidget {
             child: LinearProgressIndicator(
               value: percentage.clamp(0, 1),
               minHeight: 10,
-              backgroundColor: const Color(0xFFF1F5F9),
+              backgroundColor: colors.primary.withValues(alpha: 0.08),
               valueColor: AlwaysStoppedAnimation<Color>(status.chipTextColor),
             ),
           ),
@@ -324,13 +431,16 @@ class _CategoryHealthTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final ratio = total == 0 ? 0.0 : critical / total;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: colors.onSurface.withValues(alpha: 0.06)),
       ),
       child: Row(
         children: [
@@ -340,15 +450,15 @@ class _CategoryHealthTile extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   '$critical critical out of $total assets',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF6B7280),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colors.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -364,7 +474,7 @@ class _CategoryHealthTile extends StatelessWidget {
                 SizedBox.expand(
                   child: CircularProgressIndicator(
                     value: ratio.clamp(0, 1),
-                    backgroundColor: const Color(0xFFF1F5F9),
+                    backgroundColor: colors.primary.withValues(alpha: 0.08),
                     strokeWidth: 6,
                     valueColor: AlwaysStoppedAnimation<Color>(
                       ratio > 0.6
@@ -377,9 +487,9 @@ class _CategoryHealthTile extends StatelessWidget {
                 ),
                 Text(
                   '${(ratio * 100).toStringAsFixed(0)}%',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),

@@ -7,6 +7,7 @@ class Asset extends Equatable {
   const Asset({
     required this.id,
     required this.name,
+    required this.barcode,
     required this.serialNumber,
     required this.categoryId,
     required this.status,
@@ -16,6 +17,11 @@ class Asset extends Equatable {
     this.location,
     this.brand,
     this.model,
+    this.processorName,
+    this.ramCapacity,
+    this.storageType,
+    this.storageBrand,
+    this.storageCapacity,
     this.purchaseDate,
     this.purchasePrice,
     this.warrantyExpiry,
@@ -29,6 +35,7 @@ class Asset extends Equatable {
 
   final String id;
   final String name;
+  final String barcode;
   final String serialNumber;
   final String categoryId;
   final AssetStatus status;
@@ -38,6 +45,11 @@ class Asset extends Equatable {
   final String? location;
   final String? brand;
   final String? model;
+  final String? processorName;
+  final String? ramCapacity;
+  final String? storageType;
+  final String? storageBrand;
+  final String? storageCapacity;
   final DateTime? purchaseDate;
   final double? purchasePrice;
   final DateTime? warrantyExpiry;
@@ -51,6 +63,7 @@ class Asset extends Equatable {
   Asset copyWith({
     String? id,
     String? name,
+    String? barcode,
     String? serialNumber,
     String? categoryId,
     AssetStatus? status,
@@ -60,6 +73,11 @@ class Asset extends Equatable {
     String? location,
     String? brand,
     String? model,
+    String? processorName,
+    String? ramCapacity,
+    String? storageType,
+    String? storageBrand,
+    String? storageCapacity,
     DateTime? purchaseDate,
     double? purchasePrice,
     DateTime? warrantyExpiry,
@@ -73,6 +91,7 @@ class Asset extends Equatable {
     return Asset(
       id: id ?? this.id,
       name: name ?? this.name,
+      barcode: barcode ?? this.barcode,
       serialNumber: serialNumber ?? this.serialNumber,
       categoryId: categoryId ?? this.categoryId,
       status: status ?? this.status,
@@ -82,6 +101,11 @@ class Asset extends Equatable {
       location: location ?? this.location,
       brand: brand ?? this.brand,
       model: model ?? this.model,
+      processorName: processorName ?? this.processorName,
+      ramCapacity: ramCapacity ?? this.ramCapacity,
+      storageType: storageType ?? this.storageType,
+      storageBrand: storageBrand ?? this.storageBrand,
+      storageCapacity: storageCapacity ?? this.storageCapacity,
       purchaseDate: purchaseDate ?? this.purchaseDate,
       purchasePrice: purchasePrice ?? this.purchasePrice,
       warrantyExpiry: warrantyExpiry ?? this.warrantyExpiry,
@@ -96,16 +120,23 @@ class Asset extends Equatable {
 
   Map<String, dynamic> toMap() => {
     'id': id,
-    'asset_code': serialNumber,
+    'asset_code': barcode,
+    'barcode': barcode,
     'serial_number': serialNumber,
     'asset_category_id': categoryId,
     'status': status.apiValue,
     'department': department,
     'assigned_to': assignedTo,
+    'custodian_name': assignedTo,
     'assigned_avatar': assignedAvatar,
     'location': location,
     'brand': brand,
     'model': model,
+    'processor_name': processorName,
+    'ram_capacity': ramCapacity,
+    'storage_type': storageType,
+    'storage_brand': storageBrand,
+    'storage_capacity': storageCapacity,
     'purchase_date': purchaseDate?.toIso8601String(),
     'purchase_price': purchasePrice,
     'warranty_expiry': warrantyExpiry?.toIso8601String(),
@@ -122,16 +153,28 @@ class Asset extends Equatable {
   }) {
     final normalized = Map<String, dynamic>.from(map);
     final category = (normalized['category'] as Map?)?.cast<String, dynamic>();
-    final custodian =
-        (normalized['custodian'] as Map?)?.cast<String, dynamic>();
+    final custodian = (normalized['custodian'] as Map?)
+        ?.cast<String, dynamic>();
+    final rawCustodianName =
+        custodian?['name'] as String? ??
+        (normalized['custodian_name'] as String?);
+    final custodianName = rawCustodianName != null
+        ? (rawCustodianName.trim().isEmpty ? null : rawCustodianName.trim())
+        : null;
     final idValue =
         normalized['id'] ??
         normalized['asset_code'] ??
         normalized['serial_number'] ??
         '';
-    final serial =
-        (normalized['serial_number'] ?? normalized['asset_code'] ?? '')
-            .toString();
+    final rawBarcode =
+        normalized['barcode'] ?? normalized['asset_code'] ?? normalized['code'];
+    final barcode = rawBarcode == null ? '' : rawBarcode.toString();
+    final rawSerial = normalized['serial_number'];
+    final serial = rawSerial == null ? '' : rawSerial.toString();
+    final effectiveSerial = serial.isNotEmpty
+        ? serial
+        : (barcode.isNotEmpty ? barcode : idValue.toString());
+    final effectiveBarcode = barcode.isNotEmpty ? barcode : effectiveSerial;
     final categoryIdValue =
         category?['id'] ?? normalized['asset_category_id'] ?? '';
     final department =
@@ -140,17 +183,23 @@ class Asset extends Equatable {
     return Asset(
       id: idValue.toString(),
       name: (normalized['name'] as String?) ?? '',
-      serialNumber: serial.isEmpty ? idValue.toString() : serial,
+      barcode: effectiveBarcode,
+      serialNumber: effectiveSerial,
       categoryId: categoryIdValue.toString(),
       status: AssetStatusApi.fromApi(
         (normalized['status'] as String?)?.toLowerCase(),
       ),
       department: department.toString(),
-      assignedTo: custodian?['name'] as String?,
+      assignedTo: custodianName,
       assignedAvatar: custodian?['avatar'] as String?,
       location: normalized['location'] as String?,
       brand: normalized['brand'] as String?,
       model: normalized['model'] as String?,
+      processorName: normalized['processor_name'] as String?,
+      ramCapacity: normalized['ram_capacity'] as String?,
+      storageType: normalized['storage_type'] as String?,
+      storageBrand: normalized['storage_brand'] as String?,
+      storageCapacity: normalized['storage_capacity'] as String?,
       purchaseDate: _parseDate(normalized['purchase_date']),
       purchasePrice: _parseDouble(normalized['purchase_price']),
       warrantyExpiry: _parseDate(normalized['warranty_expiry']),
@@ -189,6 +238,7 @@ class Asset extends Equatable {
   List<Object?> get props => [
     id,
     name,
+    barcode,
     serialNumber,
     categoryId,
     status,
@@ -198,6 +248,11 @@ class Asset extends Equatable {
     location,
     brand,
     model,
+    processorName,
+    ramCapacity,
+    storageType,
+    storageBrand,
+    storageCapacity,
     purchaseDate,
     purchasePrice,
     warrantyExpiry,

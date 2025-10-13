@@ -80,7 +80,9 @@ class _CategoryScreenState extends State<CategoryScreen> {
                     Text(
                       'Category Summary',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF6B7280),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -100,15 +102,21 @@ class _CategoryScreenState extends State<CategoryScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                          border: Border.all(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.06),
+                          ),
                         ),
                         child: Column(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.inventory_2_outlined,
-                              color: Color(0xFF9CA3AF),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.45),
                               size: 32,
                             ),
                             const SizedBox(height: 12),

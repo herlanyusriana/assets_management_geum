@@ -15,15 +15,18 @@ class AssetCategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          border: Border.all(color: colors.onSurface.withValues(alpha: 0.06)),
         ),
         child: Row(
           children: [
@@ -31,13 +34,13 @@ class AssetCategoryCard extends StatelessWidget {
               width: 46,
               height: 46,
               decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
+                color: colors.primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
                 iconForCategory(category.iconName),
                 size: 26,
-                color: const Color(0xFF6B7280),
+                color: colors.primary,
               ),
             ),
             const SizedBox(width: 16),
@@ -47,15 +50,15 @@ class AssetCategoryCard extends StatelessWidget {
                 children: [
                   Text(
                     category.name,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     ' devices',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFF6B7280),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colors.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -64,22 +67,25 @@ class AssetCategoryCard extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.business_center,
-                  color: Color(0xFF9CA3AF),
+                  color: colors.onSurface.withValues(alpha: 0.45),
                   size: 18,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   (category.departmentCode ?? '').toUpperCase(),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF9CA3AF),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colors.onSurface.withValues(alpha: 0.55),
                   ),
                 ),
               ],
             ),
             const SizedBox(width: 12),
-            const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF)),
+            Icon(
+              Icons.chevron_right,
+              color: colors.onSurface.withValues(alpha: 0.45),
+            ),
           ],
         ),
       ),

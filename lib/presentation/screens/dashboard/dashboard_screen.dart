@@ -234,7 +234,7 @@ class _SummarySection extends StatelessWidget {
               title: 'Critical',
               value: criticalAssets.toString(),
               icon: Icons.error_outline,
-              backgroundColor: const Color(0xFFFFF5F5),
+              backgroundColor: _criticalBackground(context),
             ),
           ),
         ],
@@ -253,10 +253,21 @@ class _SummarySection extends StatelessWidget {
           title: 'Critical',
           value: criticalAssets.toString(),
           icon: Icons.error_outline,
-          backgroundColor: const Color(0xFFFFF5F5),
+          backgroundColor: _criticalBackground(context),
         ),
       ],
     );
+  }
+
+  Color _criticalBackground(BuildContext context) {
+    final theme = Theme.of(context);
+    if (theme.brightness == Brightness.dark) {
+      return Color.alphaBlend(
+        const Color(0xFFFF4D67).withValues(alpha: 0.18),
+        theme.colorScheme.surface,
+      );
+    }
+    return const Color(0xFFFFF5F5);
   }
 }
 

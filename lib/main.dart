@@ -14,8 +14,8 @@ import 'presentation/bloc/settings/settings_state.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/dashboard/dashboard_screen.dart';
 import 'presentation/screens/reports/reports_screen.dart';
+import 'presentation/screens/scan/scan_screen.dart';
 import 'presentation/screens/settings/settings_screen.dart';
-import 'presentation/widgets/app_bottom_navigation.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -102,69 +102,13 @@ class RootShell extends StatelessWidget {
           case 1:
             return const ReportsScreen();
           case 2:
-            return const _ScanPlaceholder();
+            return const ScanScreen();
           case 3:
             return const SettingsScreen();
           default:
             return const DashboardScreen();
         }
       },
-    );
-  }
-}
-
-class _ScanPlaceholder extends StatelessWidget {
-  const _ScanPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    final index = context.watch<NavigationCubit>().state;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Scan Asset')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(28),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: const Icon(
-                  Icons.qr_code_scanner,
-                  size: 72,
-                  color: Color(0xFF6B7280),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Scanner belum terhubung',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Integrasikan kamera perangkat atau pemindai barcode eksternal untuk memperbarui status aset secara instan.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF6B7280),
-                ),
-              ),
-              const SizedBox(height: 24),
-              OutlinedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.info_outline),
-                label: const Text('Pelajari integrasi scanner'),
-              ),
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: AppBottomNavigation(currentIndex: index),
     );
   }
 }
@@ -177,5 +121,3 @@ class _SplashScreen extends StatelessWidget {
     return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }
-
-

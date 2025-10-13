@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as p;
@@ -8,6 +9,8 @@ import '../../domain/models/asset.dart';
 import '../../domain/models/asset_activity.dart';
 import '../../domain/models/asset_category.dart';
 import '../../domain/models/asset_status.dart';
+import '../../domain/models/asset_export_format.dart';
+import '../../domain/models/asset_report_file.dart';
 import '../../domain/models/maintenance_entry.dart';
 import '../datasources/api_client.dart';
 import '../datasources/asset_api_service.dart';
@@ -58,8 +61,6 @@ class AssetRepository {
         .map((raw) => AssetCategory.fromMap(raw.cast<String, dynamic>()))
         .toList();
 
-    final activitiesData = (data['recent_activities'] as List?) ?? const [];
-
     _dashboardLoaded = true;
   }
 
@@ -78,37 +79,6 @@ class AssetRepository {
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value) ?? 0;
     return 0;
-  }
-
-  AssetActivity? _mapActivity(Map<String, dynamic> map) {
-    final asset = (map['asset'] as Map?)?.cast<String, dynamic>();
-    if (asset == null) {
-      return null;
-    }
-    final assetId = asset['id']?.toString() ?? '';
-    final assignedAt = _parseDateTime(map['assigned_at']) ?? DateTime.now();
-    final id = '_';
-    final assignedTo = map['assigned_to'] as String?;
-    final notes = map['notes'] as String?;
-    final descriptionParts = <String>[];
-    if (assignedTo != null && assignedTo.isNotEmpty) {
-      descriptionParts.add('Assigned to ');
-    }
-    if (notes != null && notes.isNotEmpty) {
-      descriptionParts.add(notes);
-    }
-    final description = descriptionParts.isEmpty
-        ? 'Status: '
-        : descriptionParts.join(' • ');
-
-    return AssetActivity(
-      id: id,
-      assetId: assetId,
-      title: asset['name'] as String? ?? 'Asset Update',
-      description: description,
-      timestamp: assignedAt,
-      type: map['returned_at'] != null ? 'returned' : 'assigned',
-    );
   }
 
   Future<List<AssetCategory>> getCategoriesWithStats() async {
@@ -202,9 +172,44 @@ class AssetRepository {
     _dashboardLoaded = false;
   }
 
+  Future<Asset?> getAssetByCode(String code) async {
+    final payload = await _api.fetchAssetByCode(code);
+    if (payload == null) return null;
+    final map = payload.cast<String, dynamic>();
+    final maintenance =
+        (map['maintenance_history'] as List?)
+            ?.whereType<Map>()
+            .map(
+              (entry) =>
+                  MaintenanceEntry.fromMap(entry.cast<String, dynamic>()),
+            )
+            .toList() ??
+        const [];
+    return Asset.fromMap(map, maintenanceHistory: maintenance);
+  }
+
+  Future<AssetReportFile> exportAssets(AssetExportFormat format) async {
+    final response = await _api.downloadAssetReport(format.queryValue);
+    final bytes = Uint8List.fromList(response.data ?? <int>[]);
+    final disposition = response.headers.value('content-disposition') ?? '';
+    final filename =
+        _extractFilename(disposition) ??
+        'assets-report.${format.recommendedExtension}';
+    final mimeType =
+        response.headers.value('content-type') ??
+        (format == AssetExportFormat.pdf ? 'application/pdf' : 'text/csv');
+
+    return AssetReportFile(
+      bytes: bytes,
+      filename: filename,
+      mimeType: mimeType,
+    );
+  }
+
   Map<String, dynamic> _assetToPayload(Asset asset) {
     final payload = <String, dynamic>{
-      'asset_code': asset.serialNumber,
+      'asset_code': asset.barcode,
+      'barcode': asset.barcode,
       'name': asset.name,
       'asset_category_id': int.tryParse(asset.categoryId) ?? asset.categoryId,
       'serial_number': asset.serialNumber,
@@ -255,12 +260,27 @@ class AssetRepository {
     return formData;
   }
 
-  DateTime? _parseDateTime(dynamic value) {
-    if (value == null) return null;
-    if (value is DateTime) return value;
-    if (value is String && value.isNotEmpty) {
-      return DateTime.tryParse(value);
+  String? _extractFilename(String disposition) {
+    final utf8Match = RegExp(
+      r"filename\*=UTF-8''([^;]+)",
+      caseSensitive: false,
+    ).firstMatch(disposition);
+    if (utf8Match != null) {
+      return Uri.decodeFull(utf8Match.group(1)!);
     }
-    return null;
+
+    final quoted = RegExp(
+      r'filename="([^\";]+)"',
+      caseSensitive: false,
+    ).firstMatch(disposition);
+    if (quoted != null) {
+      return quoted.group(1);
+    }
+
+    final simple = RegExp(
+      r'filename=([^;]+)',
+      caseSensitive: false,
+    ).firstMatch(disposition);
+    return simple?.group(1);
   }
 }

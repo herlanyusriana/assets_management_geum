@@ -129,7 +129,9 @@ class _SearchScreenState extends State<SearchScreen> {
                     Text(
                       'Showing ${assets.length} of ${state.filteredAssets.length} results',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF6B7280),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -138,15 +140,21 @@ class _SearchScreenState extends State<SearchScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                          border: Border.all(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.06),
+                          ),
                         ),
                         child: Column(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.search_off,
-                              color: Color(0xFF9CA3AF),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.45),
                               size: 32,
                             ),
                             const SizedBox(height: 12),
@@ -160,7 +168,12 @@ class _SearchScreenState extends State<SearchScreen> {
                               'Try adjusting your filters or search query.',
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: const Color(0xFF6B7280)),
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.6),
+                                  ),
                             ),
                           ],
                         ),
@@ -175,9 +188,11 @@ class _SearchScreenState extends State<SearchScreen> {
                             asset: asset,
                             icon: icon,
                             trailing: IconButton(
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.edit_outlined,
-                                color: Colors.black87,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.9),
                               ),
                               onPressed: () async {
                                 await Navigator.of(context).push(
