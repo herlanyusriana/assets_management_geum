@@ -176,7 +176,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                     if (!confirmed || !context.mounted) {
                                       return;
                                     }
-                                    await _cubit.deleteAsset(asset.id);
+                                    await _cubit.deleteAsset(asset);
                                     if (!context.mounted) return;
                                     _cubit.selectCategory(widget.category.id);
                                     _cubit.setSearchQuery(

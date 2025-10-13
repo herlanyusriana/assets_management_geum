@@ -226,6 +226,7 @@ class AssetDetailSheet extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final specItems = _buildSpecItems();
+    final specInfoTiles = _buildSpecInfoTiles();
     final purchaseDate = _formatDate(asset.purchaseDate);
     final warrantyDate = _formatDate(asset.warrantyExpiry);
     final price = _formatPrice(asset.purchasePrice);
@@ -393,25 +394,27 @@ class AssetDetailSheet extends StatelessWidget {
                         title: 'Informasi Umum',
                         children: generalInfoTiles,
                       ),
-                    if (specItems.isNotEmpty)
+                    if (specItems.isNotEmpty || specInfoTiles.isNotEmpty)
                       _SectionCard(
                         title: 'Spesifikasi',
                         children: [
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: specItems
-                                .map(
-                                  (spec) => Chip(
-                                    label: Text(spec),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
+                          if (specItems.isNotEmpty)
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: specItems
+                                  .map(
+                                    (spec) => Chip(
+                                      label: Text(spec),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
                                     ),
-                                  ),
-                                )
-                                .toList(),
-                          ),
+                                  )
+                                  .toList(),
+                            ),
+                          ...specInfoTiles,
                         ],
                       ),
                     if (purchaseTiles.isNotEmpty)
@@ -653,6 +656,51 @@ class AssetDetailSheet extends StatelessWidget {
       specs.add('Storage ${storageParts.join(' ')}');
     }
     return specs;
+  }
+
+  List<Widget> _buildSpecInfoTiles() {
+    final tiles = <Widget>[];
+    if (asset.processorName?.trim().isNotEmpty ?? false) {
+      tiles.add(
+        _InfoTile(
+          icon: Icons.memory_outlined,
+          label: 'Prosesor',
+          value: asset.processorName!.trim(),
+        ),
+      );
+    }
+    if (asset.ramCapacity?.trim().isNotEmpty ?? false) {
+      tiles.add(
+        _InfoTile(
+          icon: Icons.sd_storage_outlined,
+          label: 'Memori (RAM)',
+          value: asset.ramCapacity!.trim(),
+        ),
+      );
+    }
+
+    final storageParts = <String>[];
+    if (asset.storageCapacity?.trim().isNotEmpty ?? false) {
+      storageParts.add(asset.storageCapacity!.trim());
+    }
+    if (asset.storageType?.trim().isNotEmpty ?? false) {
+      storageParts.add(asset.storageType!.trim());
+    }
+    if (asset.storageBrand?.trim().isNotEmpty ?? false) {
+      storageParts.add('(${asset.storageBrand!.trim()})');
+    }
+
+    if (storageParts.isNotEmpty) {
+      tiles.add(
+        _InfoTile(
+          icon: Icons.storage_outlined,
+          label: 'Storage',
+          value: storageParts.join(' '),
+        ),
+      );
+    }
+
+    return tiles;
   }
 
   String? _formatDate(DateTime? date) {

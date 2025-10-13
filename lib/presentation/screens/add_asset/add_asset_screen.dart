@@ -515,7 +515,6 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
                           final custodianId = _useCustomAssignee
                               ? null
                               : selectedUser?.id;
-                          final specEnabled = showSpecFields;
                           final cubit = context.read<AssetCubit>();
 
                           if (_isEditing && _editingAsset != null) {
@@ -534,23 +533,14 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
                               location: location.isEmpty ? null : location,
                               brand: brand.isEmpty ? null : brand,
                               model: model.isEmpty ? null : model,
-                              processorName: specEnabled
-                                  ? (processor.isEmpty ? null : processor)
-                                  : base.processorName,
-                              ramCapacity: specEnabled
-                                  ? (ram.isEmpty ? null : ram)
-                                  : base.ramCapacity,
-                              storageType: specEnabled
-                                  ? (storageType.isEmpty ? null : storageType)
-                                  : base.storageType,
-                              storageBrand: specEnabled
-                                  ? (storageBrand.isEmpty ? null : storageBrand)
-                                  : base.storageBrand,
-                              storageCapacity: specEnabled
-                                  ? (storageCapacity.isEmpty
-                                        ? null
-                                        : storageCapacity)
-                                  : base.storageCapacity,
+                              processorName: processor.isEmpty ? null : processor,
+                              ramCapacity: ram.isEmpty ? null : ram,
+                              storageType: storageType.isEmpty ? null : storageType,
+                              storageBrand:
+                                  storageBrand.isEmpty ? null : storageBrand,
+                              storageCapacity: storageCapacity.isEmpty
+                                  ? null
+                                  : storageCapacity,
                               purchaseDate: _purchaseDate,
                               purchasePrice: price,
                               warrantyExpiry: _warrantyExpiry,
@@ -574,23 +564,14 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
                                 : department,
                             assignedTo: effectiveAssigneeName,
                             custodianId: custodianId,
-                            processorName: specEnabled
-                                ? (processor.isEmpty ? null : processor)
-                                : null,
-                            ramCapacity: specEnabled
-                                ? (ram.isEmpty ? null : ram)
-                                : null,
-                            storageType: specEnabled
-                                ? (storageType.isEmpty ? null : storageType)
-                                : null,
-                            storageBrand: specEnabled
-                                ? (storageBrand.isEmpty ? null : storageBrand)
-                                : null,
-                            storageCapacity: specEnabled
-                                ? (storageCapacity.isEmpty
-                                      ? null
-                                      : storageCapacity)
-                                : null,
+                            processorName: processor.isEmpty ? null : processor,
+                            ramCapacity: ram.isEmpty ? null : ram,
+                            storageType: storageType.isEmpty ? null : storageType,
+                            storageBrand:
+                                storageBrand.isEmpty ? null : storageBrand,
+                            storageCapacity: storageCapacity.isEmpty
+                                ? null
+                                : storageCapacity,
                             location: location.isEmpty ? null : location,
                             brand: brand.isEmpty ? null : brand,
                             model: model.isEmpty ? null : model,

@@ -232,7 +232,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                     }
                                     await context
                                         .read<AssetCubit>()
-                                        .deleteAsset(asset.id);
+                                        .deleteAsset(asset);
                                     if (!context.mounted) return;
                                     cubit.setSearchQuery(_controller.text);
                                   },

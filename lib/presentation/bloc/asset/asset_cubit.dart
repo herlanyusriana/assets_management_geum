@@ -135,18 +135,35 @@ class AssetCubit extends Cubit<AssetState> {
     }
   }
 
-  Future<void> deleteAsset(String id) async {
+  Future<void> deleteAsset(Asset asset) async {
     emit(state.copyWith(isLoading: true, successMessage: null, errorMessage: null));
     try {
-      await _repository.deleteAsset(id);
+      await _repository.deleteAsset(asset.id);
       final remainingAssets =
-          state.assets.where((asset) => asset.id != id).toList();
+          state.assets.where((item) => item.id != asset.id).toList();
+
+      final updatedCategories = state.categories.map((category) {
+        if (category.id == asset.categoryId) {
+          final nextTotal =
+              category.totalAssets > 0 ? category.totalAssets - 1 : 0;
+          return category.copyWith(totalAssets: nextTotal);
+        }
+        return category;
+      }).toList();
+
+      final updatedCritical = asset.status == AssetStatus.maintenance ||
+              asset.status == AssetStatus.needsCheck ||
+              asset.status == AssetStatus.retired
+          ? (state.criticalAssets > 0 ? state.criticalAssets - 1 : 0)
+          : state.criticalAssets;
 
       emit(
         state.copyWith(
           isLoading: false,
           assets: remainingAssets,
+          categories: updatedCategories,
           totalAssets: state.totalAssets > 0 ? state.totalAssets - 1 : 0,
+          criticalAssets: updatedCritical,
           successMessage: 'Asset deleted',
         ),
       );
