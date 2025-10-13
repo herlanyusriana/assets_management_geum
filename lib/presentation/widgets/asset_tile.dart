@@ -169,30 +169,6 @@ class AssetTile extends StatelessWidget {
   }
 
   Widget _buildLeading(BuildContext context) {
-    final photoUrl = asset.assetPhotoUrl;
-    final colors = Theme.of(context).colorScheme;
-    final borderRadius = BorderRadius.circular(16);
-
-    if (photoUrl != null && photoUrl.trim().isNotEmpty) {
-      return ClipRRect(
-        borderRadius: borderRadius,
-        child: Container(
-          width: 64,
-          height: 64,
-          color: colors.surface,
-          child: Image.network(
-            photoUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _fallbackIcon(context),
-          ),
-        ),
-      );
-    }
-
-    return _fallbackIcon(context);
-  }
-
-  Widget _fallbackIcon(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Container(
       width: 64,
@@ -561,7 +537,6 @@ class AssetDetailSheet extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context) {
     final theme = Theme.of(context);
-    final photoUrl = asset.assetPhotoUrl;
     final assignedName =
         asset.assignedTo != null && asset.assignedTo!.trim().isNotEmpty
         ? asset.assignedTo!.trim()
@@ -577,23 +552,8 @@ class AssetDetailSheet extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (photoUrl != null && photoUrl.trim().isNotEmpty) ...[
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: AspectRatio(
-              aspectRatio: 4 / 3,
-              child: Image.network(
-                photoUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _detailFallbackImage(theme),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ] else ...[
-          _detailFallbackImage(theme),
-          const SizedBox(height: 16),
-        ],
+        _detailHeaderBadge(theme),
+        const SizedBox(height: 16),
         Text(
           asset.name,
           style: theme.textTheme.headlineSmall?.copyWith(
@@ -632,16 +592,42 @@ class AssetDetailSheet extends StatelessWidget {
     );
   }
 
-  Widget _detailFallbackImage(ThemeData theme) {
+  Widget _detailHeaderBadge(ThemeData theme) {
     final colors = theme.colorScheme;
     return Container(
       width: double.infinity,
-      height: 180,
       decoration: BoxDecoration(
-        color: colors.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
+        color: colors.primary.withValues(
+          alpha: theme.brightness == Brightness.dark ? 0.18 : 0.1,
+        ),
+        borderRadius: BorderRadius.circular(24),
       ),
-      child: Icon(icon, size: 76, color: colors.primary.withValues(alpha: 0.6)),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 40, color: colors.primary),
+          const SizedBox(height: 14),
+          Text(
+            asset.barcode,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: colors.primary,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+          ),
+          if (asset.serialNumber.isNotEmpty &&
+              asset.serialNumber != asset.barcode) ...[
+            const SizedBox(height: 6),
+            Text(
+              'SN: ${asset.serialNumber}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colors.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 

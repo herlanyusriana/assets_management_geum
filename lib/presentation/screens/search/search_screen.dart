@@ -6,6 +6,7 @@ import '../../../domain/models/asset_status.dart';
 import '../../bloc/asset/asset_cubit.dart';
 import '../../bloc/asset/asset_state.dart';
 import '../../bloc/navigation/navigation_cubit.dart';
+import '../../utils/dialog_utils.dart';
 import '../../widgets/app_bottom_navigation.dart';
 import '../../widgets/asset_tile.dart';
 import '../add_asset/add_asset_screen.dart';
@@ -187,25 +188,56 @@ class _SearchScreenState extends State<SearchScreen> {
                           child: AssetTile(
                             asset: asset,
                             icon: icon,
-                            trailing: IconButton(
-                              icon: Icon(
-                                Icons.edit_outlined,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.primary.withValues(alpha: 0.9),
-                              ),
-                              onPressed: () async {
-                                await Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => BlocProvider.value(
-                                      value: context.read<AssetCubit>(),
-                                      child: AddAssetScreen(asset: asset),
-                                    ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.edit_outlined,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withValues(alpha: 0.9),
                                   ),
-                                );
-                                if (!context.mounted) return;
-                                cubit.setSearchQuery(_controller.text);
-                              },
+                                  tooltip: 'Edit asset',
+                                  onPressed: () async {
+                                    await Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => BlocProvider.value(
+                                          value: context.read<AssetCubit>(),
+                                          child: AddAssetScreen(asset: asset),
+                                        ),
+                                      ),
+                                    );
+                                    if (!context.mounted) return;
+                                    cubit.setSearchQuery(_controller.text);
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Color(0xFFE11D48),
+                                  ),
+                                  tooltip: 'Delete asset',
+                                  onPressed: () async {
+                                    final confirmed =
+                                        await showDeleteConfirmationDialog(
+                                      context: context,
+                                      title: 'Hapus Aset',
+                                      message:
+                                          'Yakin ingin menghapus aset "${asset.name}"? Tindakan ini tidak bisa dibatalkan.',
+                                    );
+                                    if (!confirmed || !context.mounted) {
+                                      return;
+                                    }
+                                    await context
+                                        .read<AssetCubit>()
+                                        .deleteAsset(asset.id);
+                                    if (!context.mounted) return;
+                                    cubit.setSearchQuery(_controller.text);
+                                  },
+                                ),
+                              ],
                             ),
                           ),
                         );

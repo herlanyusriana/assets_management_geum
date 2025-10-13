@@ -6,6 +6,8 @@ IconData iconForCategory(String? name) {
       return Icons.laptop_mac;
     case 'desktop_windows':
       return Icons.desktop_windows;
+    case 'monitor':
+      return Icons.tv_outlined;
     case 'videocam':
       return Icons.videocam_outlined;
     case 'memory':

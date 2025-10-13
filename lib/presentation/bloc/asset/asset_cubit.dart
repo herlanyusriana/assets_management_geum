@@ -136,11 +136,21 @@ class AssetCubit extends Cubit<AssetState> {
   }
 
   Future<void> deleteAsset(String id) async {
-    emit(state.copyWith(isLoading: true));
+    emit(state.copyWith(isLoading: true, successMessage: null, errorMessage: null));
     try {
       await _repository.deleteAsset(id);
-      await initialize();
-      emit(state.copyWith(successMessage: 'Asset deleted'));
+      final remainingAssets =
+          state.assets.where((asset) => asset.id != id).toList();
+
+      emit(
+        state.copyWith(
+          isLoading: false,
+          assets: remainingAssets,
+          totalAssets: state.totalAssets > 0 ? state.totalAssets - 1 : 0,
+          successMessage: 'Asset deleted',
+        ),
+      );
+      _applyFilters(resetVisibleCount: true);
     } catch (error) {
       emit(state.copyWith(isLoading: false, errorMessage: error.toString()));
     }

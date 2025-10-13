@@ -56,7 +56,7 @@ class AssetCategoryCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    ' devices',
+                    _buildDeviceCountLabel(category.totalAssets),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: colors.onSurface.withValues(alpha: 0.6),
                     ),
@@ -91,4 +91,10 @@ class AssetCategoryCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _buildDeviceCountLabel(int count) {
+  if (count <= 0) return 'No devices';
+  if (count == 1) return '1 device';
+  return '$count devices';
 }

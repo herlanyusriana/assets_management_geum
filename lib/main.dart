@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'core/theme/app_theme.dart';
 import 'data/repositories/asset_repository.dart';
@@ -17,8 +18,9 @@ import 'presentation/screens/reports/reports_screen.dart';
 import 'presentation/screens/scan/scan_screen.dart';
 import 'presentation/screens/settings/settings_screen.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('id_ID');
   runApp(const AssetApp());
 }
 

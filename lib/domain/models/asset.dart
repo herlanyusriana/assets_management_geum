@@ -157,7 +157,8 @@ class Asset extends Equatable {
         ?.cast<String, dynamic>();
     final rawCustodianName =
         custodian?['name'] as String? ??
-        (normalized['custodian_name'] as String?);
+        (normalized['custodian_name'] as String?) ??
+        (normalized['current_custodian_name'] as String?);
     final custodianName = rawCustodianName != null
         ? (rawCustodianName.trim().isEmpty ? null : rawCustodianName.trim())
         : null;
@@ -178,7 +179,11 @@ class Asset extends Equatable {
     final categoryIdValue =
         category?['id'] ?? normalized['asset_category_id'] ?? '';
     final department =
-        category?['department_code'] ?? normalized['department'] ?? 'Unknown';
+        (normalized['department'] ??
+            normalized['department_name'] ??
+            category?['department_code'] ??
+            category?['department_name']) ??
+        'Unknown';
 
     return Asset(
       id: idValue.toString(),

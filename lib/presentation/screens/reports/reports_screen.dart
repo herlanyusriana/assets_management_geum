@@ -1,11 +1,19 @@
 import 'dart:io';
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
+import '../../../domain/models/asset.dart';
 import '../../../domain/models/asset_export_format.dart';
 import '../../../domain/models/asset_status.dart';
 import '../../bloc/asset/asset_cubit.dart';
@@ -76,6 +84,15 @@ class ReportsScreen extends StatelessWidget {
                                 _exportReport(context, AssetExportFormat.pdf),
                             icon: const Icon(Icons.picture_as_pdf_outlined),
                             label: const Text('Export PDF'),
+                          ),
+                        ),
+                        SizedBox(
+                          width: isWide ? 220 : double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () =>
+                                _printAllBarcodes(context, state.assets),
+                            icon: const Icon(Icons.qr_code_2_outlined),
+                            label: const Text('Print All Barcodes'),
                           ),
                         ),
                       ],
@@ -203,6 +220,220 @@ class ReportsScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _printAllBarcodes(
+    BuildContext context,
+    List<Asset> assets,
+  ) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final printable = assets
+        .where(
+          (asset) => asset.barcode.trim().isNotEmpty,
+        )
+        .toList()
+      ..sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
+
+    if (printable.isEmpty) {
+      messenger?.showSnackBar(
+        const SnackBar(content: Text('Tidak ada barcode yang dapat dicetak.')),
+      );
+      return;
+    }
+
+    try {
+      pw.ImageProvider? logoImage;
+      try {
+        final data = await rootBundle.load('assets/logo-big.jpg');
+        logoImage = pw.MemoryImage(data.buffer.asUint8List());
+      } catch (_) {
+        logoImage = null;
+      }
+
+      final doc = pw.Document();
+      const columns = 3;
+      const rowsPerPage = 8;
+      const gap = 12.0;
+      final chunkSize = columns * rowsPerPage;
+      final generatedAt =
+          DateFormat('d MMM yyyy HH:mm', 'id_ID').format(DateTime.now());
+
+      for (var pageIndex = 0;
+          pageIndex * chunkSize < printable.length;
+          pageIndex++) {
+        final start = pageIndex * chunkSize;
+        final end = math.min(start + chunkSize, printable.length);
+        final pageAssets = printable.sublist(start, end);
+
+        doc.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(24),
+            build: (pdfContext) {
+              final availableWidth = pdfContext.page.pageFormat.availableWidth;
+              final labelWidth =
+                  (availableWidth - gap * (columns - 1)) / columns;
+              final labelHeight = 70 * PdfPageFormat.mm;
+              final rows = <pw.TableRow>[];
+
+              for (var i = 0; i < pageAssets.length; i += columns) {
+                final cells = <pw.Widget>[];
+                for (var col = 0; col < columns; col++) {
+                  final index = i + col;
+                  if (index < pageAssets.length) {
+                    cells.add(
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(gap / 2),
+                        child: _buildBarcodeLabel(
+                          asset: pageAssets[index],
+                          logoImage: logoImage,
+                          width: labelWidth,
+                          height: labelHeight,
+                        ),
+                      ),
+                    );
+                  } else {
+                    cells.add(
+                      pw.SizedBox(width: labelWidth, height: labelHeight),
+                    );
+                  }
+                }
+                rows.add(pw.TableRow(children: cells));
+              }
+
+              return pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                children: [
+                  pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.center,
+                    children: [
+                      if (logoImage != null)
+                        pw.Container(
+                          width: 64,
+                          height: 32,
+                          margin: const pw.EdgeInsets.only(right: 12),
+                          child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+                        ),
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            'Daftar Barcode Aset',
+                            style: pw.TextStyle(
+                              fontSize: 16,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                          pw.Text(
+                            'Dicetak $generatedAt',
+                            style: const pw.TextStyle(fontSize: 10),
+                          ),
+                        ],
+                      ),
+                      pw.Spacer(),
+                      pw.Text(
+                        'Halaman ${pageIndex + 1}',
+                        style: const pw.TextStyle(fontSize: 10),
+                      ),
+                    ],
+                  ),
+                  pw.SizedBox(height: 16),
+                  pw.Table(
+                    columnWidths: {
+                      for (var col = 0; col < columns; col++)
+                        col: pw.FixedColumnWidth(labelWidth),
+                    },
+                    children: rows,
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      }
+
+      await Printing.layoutPdf(onLayout: (_) async => doc.save());
+    } catch (error) {
+      messenger?.showSnackBar(
+        SnackBar(content: Text('Gagal mencetak barcode: $error')),
+      );
+    }
+  }
+
+  pw.Widget _buildBarcodeLabel({
+    required Asset asset,
+    required double width,
+    required double height,
+    pw.ImageProvider? logoImage,
+  }) {
+    final serialLine = asset.serialNumber.isNotEmpty &&
+            asset.serialNumber != asset.barcode
+        ? 'SN: ${asset.serialNumber}'
+        : null;
+
+    return pw.Container(
+      width: width,
+      height: height,
+      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.black, width: 0.5),
+        borderRadius: pw.BorderRadius.circular(10),
+      ),
+      child: pw.Column(
+        mainAxisAlignment: pw.MainAxisAlignment.start,
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          if (logoImage != null)
+            pw.Container(
+              height: 26,
+              margin: const pw.EdgeInsets.only(bottom: 6),
+              child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+            ),
+          pw.Text(
+            asset.name,
+            style: pw.TextStyle(
+              fontSize: 10,
+              fontWeight: pw.FontWeight.bold,
+            ),
+            maxLines: 2,
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.SizedBox(height: 6),
+          pw.Expanded(
+            child: pw.Center(
+              child: pw.Padding(
+                padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                child: pw.BarcodeWidget(
+                  barcode: pw.Barcode.qrCode(),
+                  data: asset.barcode,
+                  drawText: false,
+                  color: PdfColors.black,
+                ),
+              ),
+            ),
+          ),
+          pw.SizedBox(height: 6),
+          pw.Text(
+            asset.barcode,
+            style: pw.TextStyle(
+              fontSize: 9,
+              letterSpacing: 1.2,
+            ),
+            textAlign: pw.TextAlign.center,
+          ),
+          if (serialLine != null) ...[
+            pw.SizedBox(height: 2),
+            pw.Text(
+              serialLine,
+              style: const pw.TextStyle(fontSize: 8),
+              textAlign: pw.TextAlign.center,
+            ),
+          ],
+        ],
+      ),
     );
   }
 

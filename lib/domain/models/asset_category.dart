@@ -82,6 +82,9 @@ class AssetCategory extends Equatable {
         lower.contains('workstation')) {
       return 'desktop_windows';
     }
+    if (lower.contains('monitor') || lower.contains('display')) {
+      return 'monitor';
+    }
     if (lower.contains('cctv') || lower.contains('camera')) {
       return 'videocam';
     }
