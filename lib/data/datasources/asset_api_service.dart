@@ -63,10 +63,21 @@ class AssetApiService {
   }
 
   Future<Map<String, dynamic>> updateAsset(String id, dynamic payload) async {
-    final response = await _client.put<Map<String, dynamic>>(
-      '/assets/$id',
-      data: payload,
-    );
+    Response<Map<String, dynamic>> response;
+    if (payload is FormData) {
+      payload.fields.removeWhere((entry) => entry.key == '_method');
+      payload.fields.add(const MapEntry('_method', 'PUT'));
+
+      response = await _client.post<Map<String, dynamic>>(
+        '/assets/$id',
+        data: payload,
+      );
+    } else {
+      response = await _client.put<Map<String, dynamic>>(
+        '/assets/$id',
+        data: payload,
+      );
+    }
     final data = _unwrapResponse(response);
     return data['data'] as Map<String, dynamic>? ?? <String, dynamic>{};
   }
