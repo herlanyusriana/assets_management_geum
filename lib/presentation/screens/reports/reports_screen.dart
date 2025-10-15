@@ -253,6 +253,7 @@ class ReportsScreen extends StatelessWidget {
       builder: (sheetContext) {
         final size = MediaQuery.of(sheetContext).size;
         final selectedIds = Set<String>.from(initialSelected);
+        final excludedCount = assets.length - printable.length;
 
         return DraggableScrollableSheet(
           expand: false,
