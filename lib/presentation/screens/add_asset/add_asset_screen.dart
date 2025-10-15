@@ -448,6 +448,7 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
                           labelText: 'Location',
                         ),
                       ),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _notesController,
                         maxLines: 4,
