@@ -173,26 +173,23 @@ class _SplashScreenState extends State<_SplashScreen>
                 ScaleTransition(
                   scale: _scaleAnimation,
                   child: Container(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: colorScheme.surface.withOpacity(0.8),
-                      borderRadius: BorderRadius.circular(32),
+                      color: colorScheme.surface.withOpacity(0.92),
+                      borderRadius: BorderRadius.circular(36),
                       boxShadow: [
                         BoxShadow(
-                          color: colorScheme.primary.withOpacity(0.25),
-                          blurRadius: 30,
-                          offset: const Offset(0, 16),
+                          color: colorScheme.primary.withOpacity(0.28),
+                          blurRadius: 36,
+                          offset: const Offset(0, 18),
                         ),
                       ],
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: Image.asset(
-                        'assets/logo-big.jpg',
-                        width: 180,
-                        height: 180,
-                        fit: BoxFit.cover,
-                      ),
+                    child: Image.asset(
+                      'assets/logo-big.jpg',
+                      width: 160,
+                      height: 160,
+                      fit: BoxFit.contain,
                     ),
                   ),
                 ),

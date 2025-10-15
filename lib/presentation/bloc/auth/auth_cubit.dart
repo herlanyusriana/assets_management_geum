@@ -7,10 +7,13 @@ class AuthCubit extends Cubit<AuthState> {
   AuthCubit(this._repository) : super(const AuthState());
 
   final AuthRepository _repository;
+  static const _minimumSplashDuration = Duration(milliseconds: 1800);
 
   Future<void> checkStatus() async {
     emit(state.copyWith(status: AuthStatus.loading));
+    final delay = Future.delayed(_minimumSplashDuration);
     final loggedIn = await _repository.isLoggedIn();
+    await delay;
     if (!loggedIn) {
       emit(state.copyWith(status: AuthStatus.unauthenticated));
       return;
@@ -29,7 +32,9 @@ class AuthCubit extends Cubit<AuthState> {
 
   Future<void> login({required String email, required String password}) async {
     emit(state.copyWith(status: AuthStatus.loading, errorMessage: null));
+    final delay = Future.delayed(_minimumSplashDuration);
     final success = await _repository.login(email: email, password: password);
+    await delay;
     if (!success) {
       emit(
         state.copyWith(
