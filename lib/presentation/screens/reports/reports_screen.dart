@@ -90,9 +90,9 @@ class ReportsScreen extends StatelessWidget {
                           width: isWide ? 220 : double.infinity,
                           child: FilledButton.icon(
                             onPressed: () =>
-                                _printAllBarcodes(context, state.assets),
+                                _showBarcodeSelection(context, state.assets),
                             icon: const Icon(Icons.qr_code_2_outlined),
-                            label: const Text('Print All Barcodes'),
+                            label: const Text('Print Barcodes'),
                           ),
                         ),
                       ],
@@ -223,7 +223,7 @@ class ReportsScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _printAllBarcodes(
+  Future<void> _showBarcodeSelection(
     BuildContext context,
     List<Asset> assets,
   ) async {
@@ -244,7 +244,181 @@ class ReportsScreen extends StatelessWidget {
       return;
     }
 
+    final initialSelected =
+        printable.map((asset) => asset.id).toSet();
+
+    final selected = await showModalBottomSheet<Set<String>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        final size = MediaQuery.of(sheetContext).size;
+        final selectedIds = Set<String>.from(initialSelected);
+
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: size.height > 720 ? 0.6 : 0.85,
+          minChildSize: 0.45,
+          maxChildSize: 0.95,
+          builder: (_, controller) {
+            return StatefulBuilder(
+              builder: (context, setModalState) {
+                final allSelected = selectedIds.length == printable.length;
+                final theme = Theme.of(context);
+
+                return Material(
+                  color: theme.colorScheme.surface,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.qr_code_2_outlined),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Pilih Barcode Aset',
+                                  style: theme.textTheme.titleLarge
+                                      ?.copyWith(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () =>
+                                    Navigator.of(sheetContext).pop(),
+                                icon: const Icon(Icons.close),
+                              ),
+                            ],
+                          ),
+                        ),
+                        CheckboxListTile(
+                          value: allSelected && printable.isNotEmpty,
+                          onChanged: (checked) {
+                            setModalState(() {
+                              selectedIds
+                                ..clear()
+                                ..addAll(
+                                  checked == true
+                                      ? printable.map((asset) => asset.id)
+                                      : const <String>[],
+                                );
+                            });
+                          },
+                          title: const Text('Pilih Semua'),
+                          subtitle: Text(
+                            '${selectedIds.length} dari ${printable.length} aset dipilih',
+                          ),
+                        ),
+                        const Divider(height: 1),
+                        Expanded(
+                          child: ListView.builder(
+                            controller: controller,
+                            itemCount: printable.length,
+                            itemBuilder: (context, index) {
+                              final asset = printable[index];
+                              final isSelected =
+                                  selectedIds.contains(asset.id);
+                              return CheckboxListTile(
+                                value: isSelected,
+                                onChanged: (checked) {
+                                  setModalState(() {
+                                    if (checked == true) {
+                                      selectedIds.add(asset.id);
+                                    } else {
+                                      selectedIds.remove(asset.id);
+                                    }
+                                  });
+                                },
+                                title: Text(asset.name),
+                                subtitle: Text(asset.barcode),
+                              );
+                            },
+                          ),
+                        ),
+                        if (excludedCount > 0)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 8,
+                            ),
+                            child: Text(
+                              '$excludedCount aset tidak memiliki barcode dan tidak dapat dicetak.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () =>
+                                      Navigator.of(sheetContext).pop(),
+                                  child: const Text('Batal'),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: FilledButton(
+                                  onPressed: selectedIds.isEmpty
+                                      ? null
+                                      : () => Navigator.of(sheetContext)
+                                          .pop(Set<String>.from(selectedIds)),
+                                  child: const Text('Cetak'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+
+    if (selected == null || selected.isEmpty) return;
+
+    final selectedAssets = printable
+        .where((asset) => selected.contains(asset.id))
+        .toList();
+
+    if (selectedAssets.isEmpty) {
+      messenger?.showSnackBar(
+        const SnackBar(content: Text('Tidak ada barcode yang dipilih.')),
+      );
+      return;
+    }
+
+    await _printBarcodes(context, selectedAssets);
+  }
+
+  Future<void> _printBarcodes(
+    BuildContext context,
+    List<Asset> assets,
+  ) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+
     try {
+      final printable = List<Asset>.from(assets)
+        ..sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
+
       pw.ImageProvider? logoImage;
       try {
         final data = await rootBundle.load('assets/logo-big.jpg');
